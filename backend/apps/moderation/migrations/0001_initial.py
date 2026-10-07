@@ -1,0 +1,6 @@
+import uuid
+from django.db import migrations,models
+import django.db.models.deletion
+class Migration(migrations.Migration):
+    initial=True; dependencies=[('accounts','0001_initial')]
+    operations=[migrations.CreateModel(name='Report',fields=[('id',models.UUIDField(default=uuid.uuid4,editable=False,primary_key=True,serialize=False)),('target_type',models.CharField(choices=[('USER','Utilizador'),('LISTING','Anúncio'),('MESSAGE','Mensagem'),('REVIEW','Avaliação')],max_length=30)),('target_id',models.UUIDField()),('reason',models.CharField(max_length=80)),('description',models.TextField(blank=True,max_length=2000)),('status',models.CharField(choices=[('OPEN','Aberto'),('REVIEWING','Em análise'),('RESOLVED','Resolvido'),('REJECTED','Rejeitado')],default='OPEN',max_length=20)),('resolution',models.TextField(blank=True)),('created_at',models.DateTimeField(auto_now_add=True)),('updated_at',models.DateTimeField(auto_now=True)),('reporter',models.ForeignKey(on_delete=django.db.models.deletion.PROTECT,related_name='reports_made',to='accounts.user')),('resolved_by',models.ForeignKey(blank=True,null=True,on_delete=django.db.models.deletion.PROTECT,related_name='moderation_resolutions',to='accounts.user'))],options={'ordering':['-created_at'],'indexes':[models.Index(fields=['status','created_at'],name='moderation_status_created_idx')]})]

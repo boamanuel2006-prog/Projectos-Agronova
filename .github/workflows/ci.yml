@@ -1,0 +1,63 @@
+name: AgroNova CI
+on:
+  push:
+  pull_request:
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: agronova
+          POSTGRES_USER: agronova
+          POSTGRES_PASSWORD: agronova
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U agronova -d agronova"
+          --health-interval=10s --health-timeout=5s --health-retries=5
+      redis:
+        image: redis:8-alpine
+        ports: ["6379:6379"]
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - run: python manage.py check --deploy
+      - run: python manage.py test
+      - run: python -m compileall -q .
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --package-lock-only --ignore-scripts
+      - run: npm ci --ignore-scripts
+      - run: npm run typecheck
+      - run: npm run build
+
+  mobile:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --package-lock-only --ignore-scripts
+      - run: npm ci --ignore-scripts
+      - run: npx expo-doctor
+      - run: npm run typecheck

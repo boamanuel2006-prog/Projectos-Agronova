@@ -1,0 +1,20 @@
+import uuid
+from django.conf import settings
+from django.db import migrations, models
+import django.db.models.deletion
+import django.core.validators
+
+class Migration(migrations.Migration):
+    initial = True
+    dependencies = [('accounts','0001_initial'),('orders','0001_initial')]
+    operations = [
+        migrations.CreateModel(name='Conversation', fields=[('id',models.UUIDField(default=uuid.uuid4,editable=False,primary_key=True,serialize=False)),('title',models.CharField(blank=True,max_length=180)),('is_active',models.BooleanField(default=True)),('created_at',models.DateTimeField(auto_now_add=True)),('updated_at',models.DateTimeField(auto_now=True)),('order',models.OneToOneField(blank=True,null=True,on_delete=django.db.models.deletion.SET_NULL,related_name='conversation',to='orders.order'))]),
+        migrations.CreateModel(name='ConversationMember', fields=[('id',models.BigAutoField(auto_created=True,primary_key=True,serialize=False,verbose_name='ID')),('joined_at',models.DateTimeField(auto_now_add=True)),('last_read_at',models.DateTimeField(blank=True,null=True)),('muted',models.BooleanField(default=False)),('conversation',models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,related_name='members',to='messaging.conversation')),('user',models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,related_name='conversations',to=settings.AUTH_USER_MODEL))]),
+        migrations.CreateModel(name='Message', fields=[('id',models.UUIDField(default=uuid.uuid4,editable=False,primary_key=True,serialize=False)),('message_type',models.CharField(choices=[('TEXT','Texto'),('SYSTEM','Sistema'),('IMAGE','Imagem'),('FILE','Ficheiro')],default='TEXT',max_length=10)),('body',models.TextField(blank=True,max_length=5000)),('attachment',models.FileField(blank=True,null=True,upload_to='messages/%Y/%m/',validators=[django.core.validators.FileExtensionValidator(allowed_extensions=['jpg','jpeg','png','webp','pdf','doc','docx','xls','xlsx'])])),('created_at',models.DateTimeField(auto_now_add=True)),('edited_at',models.DateTimeField(blank=True,null=True)),('deleted_at',models.DateTimeField(blank=True,null=True)),('conversation',models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,related_name='messages',to='messaging.conversation')),('reply_to',models.ForeignKey(blank=True,null=True,on_delete=django.db.models.deletion.SET_NULL,related_name='replies',to='messaging.message')),('sender',models.ForeignKey(on_delete=django.db.models.deletion.PROTECT,related_name='sent_messages',to=settings.AUTH_USER_MODEL))]),
+        migrations.CreateModel(name='MessageRead', fields=[('id',models.BigAutoField(auto_created=True,primary_key=True,serialize=False,verbose_name='ID')),('read_at',models.DateTimeField(auto_now_add=True)),('message',models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,related_name='reads',to='messaging.message')),('user',models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,related_name='message_reads',to=settings.AUTH_USER_MODEL))]),
+        migrations.CreateModel(name='UserBlock', fields=[('id',models.BigAutoField(auto_created=True,primary_key=True,serialize=False,verbose_name='ID')),('created_at',models.DateTimeField(auto_now_add=True)),('blocked',models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,related_name='blocks_received',to=settings.AUTH_USER_MODEL)),('blocker',models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,related_name='blocks_created',to=settings.AUTH_USER_MODEL))]),
+        migrations.AddIndex(model_name='message',index=models.Index(fields=['conversation','-created_at'],name='messaging_me_conver_8d3e0f_idx')),
+        migrations.AddConstraint(model_name='conversationmember',constraint=models.UniqueConstraint(fields=('conversation','user'),name='unique_conversation_member')),
+        migrations.AddConstraint(model_name='messageread',constraint=models.UniqueConstraint(fields=('message','user'),name='unique_message_read')),
+        migrations.AddConstraint(model_name='userblock',constraint=models.UniqueConstraint(fields=('blocker','blocked'),name='unique_user_block')),
+    ]

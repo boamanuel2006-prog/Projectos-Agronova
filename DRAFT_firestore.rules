@@ -1,0 +1,215 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Global Helpers ---
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isVerifiedUser() && (
+        request.auth.token.email == 'boamanuel2006@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // --- Validation Blueprints ---
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll(['uid', 'displayName', 'email', 'role', 'preferredCategory', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'displayName', 'email', 'photoURL', 'role', 'preferredCategory', 'createdAt', 'updatedAt'])
+        && data.uid is string && data.uid == userId && isValidId(data.uid)
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 160
+        && (!('photoURL' in data) || data.photoURL == null || (data.photoURL is string && data.photoURL.size() <= 500))
+        && data.role in ['FARMER', 'BUYER', 'COMPANY', 'TRANSPORTER', 'CONSULTANT']
+        && data.preferredCategory is string && data.preferredCategory.size() <= 64
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidListing(data) {
+      return data.keys().hasAll([
+          'sellerId', 'sellerName', 'categoryId', 'categoryName', 'categorySlug',
+          'title', 'description', 'price', 'currency', 'unit', 'quantity',
+          'status', 'locationText', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'sellerId', 'sellerName', 'categoryId', 'categoryName', 'categorySlug',
+          'title', 'description', 'price', 'currency', 'unit', 'quantity',
+          'status', 'locationText', 'createdAt', 'updatedAt'
+        ])
+        && data.sellerId is string && isValidId(data.sellerId)
+        && data.sellerName is string && data.sellerName.size() >= 1 && data.sellerName.size() <= 120
+        && data.categoryId is number && data.categoryId >= 1
+        && data.categoryName is string && data.categoryName.size() >= 1 && data.categoryName.size() <= 100
+        && data.categorySlug is string && data.categorySlug.size() >= 1 && data.categorySlug.size() <= 120 && data.categorySlug.matches('^[a-z0-9\\-]+$')
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 180
+        && data.description is string && data.description.size() <= 2000
+        && data.price is number && data.price >= 0
+        && data.currency in ['AOA', 'USD', 'EUR']
+        && data.unit is string && data.unit.size() >= 1 && data.unit.size() <= 40
+        && data.quantity is number && data.quantity >= 0
+        && data.status in ['DRAFT', 'PUBLISHED', 'PAUSED', 'ARCHIVED']
+        && data.locationText is string && data.locationText.size() <= 255
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidCartItem(data, userId) {
+      return data.keys().hasAll(['ownerId', 'listingId', 'title', 'price', 'currency', 'unit', 'quantity', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerId', 'listingId', 'title', 'price', 'currency', 'unit', 'quantity', 'createdAt', 'updatedAt'])
+        && data.ownerId is string && data.ownerId == userId && isValidId(data.ownerId)
+        && data.listingId is string && isValidId(data.listingId)
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 180
+        && data.price is number && data.price >= 0
+        && data.currency in ['AOA', 'USD', 'EUR']
+        && data.unit is string && data.unit.size() >= 1 && data.unit.size() <= 40
+        && data.quantity is number && data.quantity > 0
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidNotification(data, userId) {
+      return data.keys().hasAll(['ownerId', 'title', 'message', 'createdAt'])
+        && data.keys().hasOnly(['ownerId', 'title', 'message', 'readAt', 'createdAt'])
+        && data.ownerId is string && data.ownerId == userId && isValidId(data.ownerId)
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 180
+        && data.message is string && data.message.size() >= 1 && data.message.size() <= 500
+        && (!('readAt' in data) || data.readAt == null || data.readAt is timestamp)
+        && data.createdAt is timestamp;
+    }
+
+    // --- Collection Rules ---
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if false;
+      allow create: if isValidId(userId)
+        && isVerifiedUser()
+        && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(userId)
+        && isVerifiedUser()
+        && isValidUserProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'role', 'preferredCategory', 'updatedAt'])) ||
+          isAdmin()
+        );
+      allow delete: if isValidId(userId) && isAdmin();
+
+      match /cartItems/{itemId} {
+        allow get: if isValidId(userId) && isValidId(itemId) && (isOwner(userId) || isAdmin());
+        allow list: if isValidId(userId) && isOwner(userId) && existing().ownerId == request.auth.uid;
+        allow create: if isValidId(userId)
+          && isValidId(itemId)
+          && isVerifiedUser()
+          && isOwner(userId)
+          && isValidCartItem(incoming(), userId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && exists(/databases/$(database)/documents/users/$(userId));
+        allow update: if isValidId(userId)
+          && isValidId(itemId)
+          && isVerifiedUser()
+          && isOwner(userId)
+          && isValidCartItem(incoming(), userId)
+          && incoming().ownerId == existing().ownerId
+          && incoming().listingId == existing().listingId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['quantity', 'updatedAt'])
+          && exists(/databases/$(database)/documents/users/$(userId));
+        allow delete: if isValidId(userId) && isValidId(itemId) && isVerifiedUser() && (isOwner(userId) || isAdmin());
+      }
+
+      match /notifications/{notificationId} {
+        allow get: if isValidId(userId) && isValidId(notificationId) && (isOwner(userId) || isAdmin());
+        allow list: if isValidId(userId) && isOwner(userId) && existing().ownerId == request.auth.uid;
+        allow create: if isValidId(userId)
+          && isValidId(notificationId)
+          && isVerifiedUser()
+          && isOwner(userId)
+          && isValidNotification(incoming(), userId)
+          && incoming().createdAt == request.time
+          && exists(/databases/$(database)/documents/users/$(userId));
+        allow update: if isValidId(userId)
+          && isValidId(notificationId)
+          && isVerifiedUser()
+          && isOwner(userId)
+          && isValidNotification(incoming(), userId)
+          && incoming().ownerId == existing().ownerId
+          && incoming().title == existing().title
+          && incoming().message == existing().message
+          && incoming().createdAt == existing().createdAt
+          && incoming().diff(existing()).affectedKeys().hasOnly(['readAt'])
+          && exists(/databases/$(database)/documents/users/$(userId));
+        allow delete: if isValidId(userId) && isValidId(notificationId) && isVerifiedUser() && (isOwner(userId) || isAdmin());
+      }
+    }
+
+    match /listings/{listingId} {
+      allow get: if isValidId(listingId) && (
+        existing().status == 'PUBLISHED' ||
+        (isSignedIn() && existing().sellerId == request.auth.uid) ||
+        isAdmin()
+      );
+      allow list: if existing().status == 'PUBLISHED' || (isSignedIn() && existing().sellerId == request.auth.uid);
+      allow create: if isValidId(listingId)
+        && isVerifiedUser()
+        && isValidListing(incoming())
+        && incoming().sellerId == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(listingId)
+        && isVerifiedUser()
+        && isValidListing(incoming())
+        && incoming().sellerId == existing().sellerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && existing().status != 'ARCHIVED'
+        && (
+          (existing().sellerId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly([
+            'title', 'description', 'categoryId', 'categoryName', 'categorySlug',
+            'price', 'currency', 'unit', 'quantity', 'status', 'locationText', 'updatedAt'
+          ])) ||
+          isAdmin()
+        );
+      allow delete: if isValidId(listingId) && isVerifiedUser() && (existing().sellerId == request.auth.uid || isAdmin());
+    }
+
+    match /admins/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list, write: if false;
+    }
+  }
+}

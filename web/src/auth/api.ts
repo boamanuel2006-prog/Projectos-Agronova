@@ -1,4 +1,4 @@
-const API=(import.meta.env.VITE_API_URL||'http://localhost:8000/api/v1').replace(/\/$/,'');
+const API=(import.meta.env.VITE_API_URL||'/api/v1').replace(/\/$/,'');
 export type Session={access:string;refresh:string;user:any};
 export async function request(path:string, options:RequestInit={}, token?:string){
   const headers=new Headers(options.headers); headers.set('Content-Type','application/json'); if(token) headers.set('Authorization',`Bearer ${token}`);

@@ -1,0 +1,367 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated user profile persisted in Firestore with isolated PII.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID matching the document ID."
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "description": "User full display name."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 160,
+          "description": "Verified user email address."
+        },
+        "photoURL": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Optional avatar URL from Google Auth."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["FARMER", "BUYER", "COMPANY", "TRANSPORTER", "CONSULTANT"],
+          "description": "Marketplace user role."
+        },
+        "preferredCategory": {
+          "type": "string",
+          "maxLength": 64,
+          "description": "Last selected category filter preference."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp."
+        }
+      },
+      "required": ["uid", "displayName", "email", "role", "preferredCategory", "createdAt", "updatedAt"]
+    },
+    "Listing": {
+      "title": "Listing",
+      "description": "Agricultural product listing published by a verified seller.",
+      "type": "object",
+      "properties": {
+        "sellerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Owner Firebase Auth UID."
+        },
+        "sellerName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "description": "Public seller display name."
+        },
+        "categoryId": {
+          "type": "number",
+          "description": "Numeric category identifier."
+        },
+        "categoryName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "Human-readable category name."
+        },
+        "categorySlug": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "pattern": "^[a-z0-9\\-]+$",
+          "description": "Category URL slug."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 180,
+          "description": "Product title."
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 2000,
+          "description": "Detailed product description."
+        },
+        "price": {
+          "type": "number",
+          "description": "Unit price."
+        },
+        "currency": {
+          "type": "string",
+          "enum": ["AOA", "USD", "EUR"],
+          "description": "Listing currency code."
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "description": "Measurement unit."
+        },
+        "quantity": {
+          "type": "number",
+          "description": "Available quantity."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["DRAFT", "PUBLISHED", "PAUSED", "ARCHIVED"],
+          "description": "Publication status."
+        },
+        "locationText": {
+          "type": "string",
+          "maxLength": 255,
+          "description": "Location label."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Update server timestamp."
+        }
+      },
+      "required": ["sellerId", "sellerName", "categoryId", "categoryName", "categorySlug", "title", "description", "price", "currency", "unit", "quantity", "status", "locationText", "createdAt", "updatedAt"]
+    },
+    "CartItem": {
+      "title": "CartItem",
+      "description": "Item saved in a user's shopping cart.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Cart owner UID."
+        },
+        "listingId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Referenced listing ID."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 180,
+          "description": "Snapshot of listing title."
+        },
+        "price": {
+          "type": "number",
+          "description": "Snapshot of listing price."
+        },
+        "currency": {
+          "type": "string",
+          "enum": ["AOA", "USD", "EUR"],
+          "description": "Currency code."
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40,
+          "description": "Measurement unit."
+        },
+        "quantity": {
+          "type": "number",
+          "description": "Requested quantity."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Update server timestamp."
+        }
+      },
+      "required": ["ownerId", "listingId", "title", "price", "currency", "unit", "quantity", "createdAt", "updatedAt"]
+    },
+    "FavoriteItem": {
+      "title": "FavoriteItem",
+      "description": "Saved favorite listing reference for a user.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Owner UID."
+        },
+        "listingId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Favorited listing ID."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 180,
+          "description": "Listing title snapshot."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp."
+        }
+      },
+      "required": ["ownerId", "listingId", "title", "createdAt"]
+    },
+    "OrderRecord": {
+      "title": "OrderRecord",
+      "description": "Confirmed customer purchase order persisted in Firestore.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Order owner UID."
+        },
+        "deliveryAddress": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 255,
+          "description": "Delivery address or municipality."
+        },
+        "paymentMethod": {
+          "type": "string",
+          "enum": ["MULTICAIXA_EXPRESS", "BANK_TRANSFER", "CASH_ON_DELIVERY"],
+          "description": "Selected payment method."
+        },
+        "itemsSummary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000,
+          "description": "Itemized summary of purchased products."
+        },
+        "itemsCount": {
+          "type": "number",
+          "description": "Total item units ordered."
+        },
+        "total": {
+          "type": "number",
+          "description": "Order total amount."
+        },
+        "currency": {
+          "type": "string",
+          "enum": ["AOA", "USD", "EUR"],
+          "description": "Currency code."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["CONFIRMED", "PREPARING", "DELIVERED", "CANCELLED"],
+          "description": "Order fulfillment status."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Order creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Order update timestamp."
+        }
+      },
+      "required": ["ownerId", "deliveryAddress", "paymentMethod", "itemsSummary", "itemsCount", "total", "currency", "status", "createdAt", "updatedAt"]
+    },
+    "UserNotification": {
+      "title": "UserNotification",
+      "description": "Activity notification belonging to a user.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Notification recipient UID."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 180,
+          "description": "Notification title."
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "description": "Notification message body."
+        },
+        "readAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when read, or null."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp."
+        }
+      },
+      "required": ["ownerId", "title", "message", "createdAt"]
+    },
+    "AdminMarker": {
+      "title": "AdminMarker",
+      "description": "Trusted server-managed admin marker document.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether admin privileges are active."
+        }
+      },
+      "required": ["enabled"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private user profiles indexed by Firebase Auth UID."
+    },
+    "/listings/{listingId}": {
+      "schema": { "$ref": "#/entities/Listing" },
+      "description": "Agricultural marketplace listings."
+    },
+    "/users/{userId}/cartItems/{itemId}": {
+      "schema": { "$ref": "#/entities/CartItem" },
+      "description": "User-scoped shopping cart items."
+    },
+    "/users/{userId}/favorites/{listingId}": {
+      "schema": { "$ref": "#/entities/FavoriteItem" },
+      "description": "User-scoped favorite listings."
+    },
+    "/users/{userId}/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/OrderRecord" },
+      "description": "User-scoped purchase orders."
+    },
+    "/users/{userId}/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/UserNotification" },
+      "description": "User-scoped real-time notifications."
+    },
+    "/admins/{userId}": {
+      "schema": { "$ref": "#/entities/AdminMarker" },
+      "description": "Server-provisioned admin role lookup collection."
+    }
+  }
+}
